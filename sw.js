@@ -1,7 +1,7 @@
 // OrgPulse service worker: the app opens and works with no connection.
 // Put this file next to index.html and serve both over HTTPS (or localhost).
-const CACHE = "orgpulse-v2";
-const SHELL = ["./", "./index.html", "./manifest.json"];
+const CACHE = "orgpulse-v3";
+const SHELL = ["./", "./index.html", "./manifest.json", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 const FIREBASE = [
   "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
   "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",

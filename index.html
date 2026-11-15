@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="OrgPulse" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <meta name="theme-color" content="#000000" />
   <meta name="description" content="OrgPulse: organization attendance, fair duty rotation, sanctions, announcements and messaging." />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
@@ -1449,6 +1454,62 @@
     img, svg { max-width: 100%; }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    }
+    /* ==========================================================================
+       PHONE LAYOUT (fits 320px to 430px screens; tablets and desktops unchanged)
+       ========================================================================== */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body { overflow-x: hidden; }
+    .app-shell {
+      padding-left: max(12px, env(safe-area-inset-left));
+      padding-right: max(12px, env(safe-area-inset-right));
+      padding-bottom: calc(112px + env(safe-area-inset-bottom));
+    }
+    .install-box {
+      display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+      padding: 12px 14px; border-radius: 16px; background: var(--bg-elevated);
+      font-size: 0.84rem; color: var(--text-primary);
+    }
+
+    @media (max-width: 640px) {
+      .card { padding: 16px; border-radius: 20px; }
+      .card-title { font-size: 1.1rem; }
+      .card-header { flex-direction: column; align-items: stretch !important; gap: 10px; }
+      .card-header > .btn { width: 100%; }
+      .btn { min-height: 44px; }
+      .btn-sm { min-height: 42px; }
+      .btn-xs { min-height: 36px; padding: 6px 10px; }
+      .shell-round { width: 48px; height: 48px; }
+      .shell-seg button { padding: 9px 12px; font-size: 0.8rem; }
+      .field-input { min-height: 46px; font-size: 16px; }   /* 16px stops iPhone zoom on focus */
+      .form-grid-2 { grid-template-columns: 1fr !important; }
+      .modal-card {
+        width: calc(100vw - 20px) !important;
+        max-width: none !important;
+        max-height: 88vh;
+        overflow-y: auto;
+        border-radius: 20px;
+        padding: 16px;
+      }
+      .shell-bar {
+        position: sticky; top: 0; z-index: 30;
+        background: var(--bg-obsidian);
+        padding: 8px 0;
+        gap: 8px;
+      }
+      .user-session-strip { flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+      .top-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+      .msg-bubble { max-width: 86%; }
+      .msg-messages { max-height: 62vh; }
+      .msg-thread-item { padding: 12px; }
+      .compose-peers { max-height: 200px; }
+      .table-wrap, table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .toast-stack { left: 10px; right: 10px; bottom: calc(96px + env(safe-area-inset-bottom)); }
+    }
+
+    @media (max-width: 380px) {
+      .shell-seg button { padding: 8px 9px; font-size: 0.74rem; }
+      .shell-round { width: 42px; height: 42px; font-size: 1rem; }
     }
   </style>
 </head>
@@ -5384,6 +5445,50 @@
       applyTheme(t);
     }
 
+    /* ---------- Install to phone (PWA) ---------- */
+    let deferredInstallPrompt = null;
+    const isStandaloneApp = () =>
+      window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    const isIOSDevice = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+    });
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      showToast("OrgPulse was added to your device", "emerald");
+    });
+
+    function installSectionHTML() {
+      if (isStandaloneApp()) {
+        return `<div class="install-box">✅ OrgPulse is installed on this device.</div>`;
+      }
+      if (deferredInstallPrompt) {
+        return `
+          <div class="install-box">
+            <div>Install OrgPulse on your phone for one-tap access and offline use.</div>
+            <button type="button" id="installAppBtn" class="btn btn-violet btn-sm">📲 Install app</button>
+          </div>`;
+      }
+      if (isIOSDevice()) {
+        return `<div class="install-box">On iPhone: open this page in Safari, tap the Share button, then tap "Add to Home Screen".</div>`;
+      }
+      return `<div class="install-box">To install, open your browser menu and choose "Install app" or "Add to Home screen".</div>`;
+    }
+
+    function bindInstallButton() {
+      const btn = document.getElementById("installAppBtn");
+      if (!btn) return;
+      btn.addEventListener("click", async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        closeModal();
+      });
+    }
+
     function openSettingsModal() {
       const current = document.documentElement.getAttribute("data-theme") || "dark";
       openModal(
@@ -5400,6 +5505,7 @@
             <div style="font-size:0.8rem; color:var(--text-secondary);">
               ${navigator.onLine ? "You are online. Changes sync right away." : "You are offline. Changes are saved on this device and sync when you reconnect."}
             </div>
+            ${installSectionHTML()}
             <button type="button" id="settingsSignOut" class="btn btn-rose btn-sm" style="align-self:flex-start;">Sign out</button>
           </div>
         `
@@ -5410,6 +5516,7 @@
           document.querySelectorAll("#themeSeg [data-theme-choice]").forEach((b) => b.classList.toggle("active", b === btn));
         })
       );
+      bindInstallButton();
       document.getElementById("settingsSignOut").addEventListener("click", () => {
         closeModal();
         signOutPortal();
